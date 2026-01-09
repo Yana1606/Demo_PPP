@@ -8,7 +8,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.impute import SimpleImputer
 
 # =========================================================
-# 1.1 Загрузка и анализ исходного набора данных
+# 1.1 Загрузка исходного набора данных
 # =========================================================
 
 data = pd.read_csv("data.csv")
@@ -18,14 +18,23 @@ df = data.merge(labels, left_index=True, right_index=True)
 
 print("Информация о датасете:")
 print(df.info())
-print("\nПервые строки:")
 print(df.head())
 
 # =========================================================
-# 1.2 Создание структуры данных итогового набора полей
+# 1.2 Создание структуры данных
 # =========================================================
 
 dataset = df.copy()
+
+# =========================================================
+# Удаление дубликатов
+# =========================================================
+
+duplicates_count = dataset.duplicated().sum()
+print(f"\nКоличество дубликатов: {duplicates_count}")
+
+dataset = dataset.drop_duplicates()
+print("После удаления дубликатов:", dataset.shape)
 
 # =========================================================
 # 1.3 Разбиение на обучающую и тестовую выборки
@@ -42,14 +51,11 @@ X_train, X_test, y_train, y_test = train_test_split(
     stratify=y
 )
 
-print("\nРазмер обучающей выборки:", X_train.shape)
-print("Размер тестовой выборки:", X_test.shape)
-
 # =========================================================
 # 1.4 Предобработка данных
 # =========================================================
 
-# Удаление активности «подъем по лестнице» (ascending)
+# Удаление активности "подъем по лестнице" (ascending)
 train_mask = y_train != "ascending"
 test_mask = y_test != "ascending"
 
@@ -59,19 +65,15 @@ y_train = y_train[train_mask]
 X_test = X_test[test_mask]
 y_test = y_test[test_mask]
 
-print("\nПосле удаления ascending:")
-print("Train:", X_train.shape)
-print("Test:", X_test.shape)
-
 # Анализ пропущенных значений
-print("\nПропущенные значения (train):")
+print("\nПропущенные значения:")
 print(X_train.isna().sum()[X_train.isna().sum() > 0])
 
-# Определение типов признаков
+# Типы признаков
 numeric_features = X_train.select_dtypes(include=["int64", "float64"]).columns
 categorical_features = X_train.select_dtypes(include=["object"]).columns
 
-# Конвейеры предобработки
+# Предобработка
 numeric_transformer = Pipeline(steps=[
     ("imputer", SimpleImputer(strategy="median"))
 ])
@@ -88,20 +90,15 @@ preprocessor = ColumnTransformer(
     ]
 )
 
-# Применение предобработки
 X_train_processed = preprocessor.fit_transform(X_train)
 X_test_processed = preprocessor.transform(X_test)
-
-print("\nФорма обработанных данных:")
-print("X_train_processed:", X_train_processed.shape)
-print("X_test_processed:", X_test_processed.shape)
 
 # =========================================================
 # 1.5 Описание структуры набора данных
 # =========================================================
 
 feature_description = {
-    "time_s": "Время с момента запуска устройства (секунды)",
+    "time_s": "Время с момента запуска устройства (сек)",
     "lw_x": "Ускорение по оси X левого запястья (g)",
     "lw_y": "Ускорение по оси Y левого запястья (g)",
     "lw_z": "Ускорение по оси Z левого запястья (g)",
@@ -116,12 +113,12 @@ feature_description = {
     "ra_z": "Ускорение по оси Z правой лодыжки (g)",
     "subj_id": "Идентификатор участника",
     "gender": "Пол участника",
-    "age": "Возраст участника (лет)",
-    "height_in": "Рост участника (дюймы)",
-    "weight_lbs": "Вес участника (фунты)",
-    "race": "Раса участника",
+    "age": "Возраст участника",
+    "height_in": "Рост (дюймы)",
+    "weight_lbs": "Вес (фунты)",
+    "race": "Раса",
     "right_handed": "Правша (1 — да, 0 — нет)",
-    "activity": "Тип физической активности"
+    "activity": "Тип активности"
 }
 
 description_df = pd.DataFrame(
@@ -129,19 +126,13 @@ description_df = pd.DataFrame(
     columns=["Признак", "Описание"]
 )
 
-print("\nОписание признаков:")
-print(description_df)
-
-# Описательная статистика
 stats = dataset.describe(include="all")
-print("\nОписательная статистика:")
-print(stats)
 
 # =========================================================
-# Сохранение результатов
+# Сохранение файлов для отчета
 # =========================================================
 
 description_df.to_csv("feature_description.csv", index=False)
 stats.to_csv("descriptive_statistics.csv")
 
-print("\nОбработка завершена.")
+print("\nОбработка данных завершена.")
